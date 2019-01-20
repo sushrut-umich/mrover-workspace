@@ -2,6 +2,7 @@
 #define STATE_MACHINE_HPP
 
 #include "rover.hpp"
+#include "searches.hpp"
 
 #include <lcm/lcm-cpp.hpp>
 #include <queue>
@@ -15,104 +16,94 @@ using namespace rover_msgs;
 class StateMachine
 {
 public:
-	/*************************************************************************/
-	/* Public Member Functions */
-	/*************************************************************************/
-	StateMachine( lcm::LCM& lcmObject );
+    /*************************************************************************/
+    /* Public Member Functions */
+    /*************************************************************************/
+    StateMachine( lcm::LCM& lcmObject );
 
-	~StateMachine();
+    ~StateMachine();
 
-	void run();
+    void run( );
 
-	void updateRoverStatus( AutonState autonState );
+    void updateRoverStatus( AutonState autonState );
 
-	void updateRoverStatus( Course course );
+    void updateRoverStatus( Bearing bearing );
 
-	void updateRoverStatus( Obstacle obstacle );
+    void updateRoverStatus( Course course );
 
-	void updateRoverStatus( Odometry odometry );
+    void updateRoverStatus( Obstacle obstacle );
 
-	void updateRoverStatus( TennisBall tennisBall );
+    void updateRoverStatus( Odometry odometry );
+
+    void updateRoverStatus( TennisBall tennisBall );
+
+    void updateCompletedPoints( );
+
+    void updateObstacleAngle( double angle );
+
+    void setSearcher(SearchType type);
 
 private:
-	/*************************************************************************/
-	/* Private Member Functions */
-	/*************************************************************************/
-	void publishNavState() const; // todo check if lcm const member
+    /*************************************************************************/
+    /* Private Member Functions */
+    /*************************************************************************/
+    void publishNavState() const; // todo check if lcm const member
 
-	NavState executeOff();
+    NavState executeOff();
 
-	NavState executeDone();
+    NavState executeDone();
 
-	NavState executeTurn();
+    NavState executeTurn();
 
-	NavState executeDrive();
+    NavState executeDrive();
 
-	NavState executeSearchFaceNorth();
+    NavState executeSearch();
 
-	NavState executeSearchTurn120();
+    NavState executeTurnAroundObs();
 
-	NavState executeSearchTurn240();
+    NavState executeDriveAroundObs();
 
-	NavState executeSearchTurn360();
+    void initializeSearch();
 
-	NavState executeSearchTurn();
+    bool addFourPointsToSearch();
 
-	NavState executeSearchDrive();
+    Odometry createAvoidancePoint( const double distance );
 
-	NavState executeTurnToBall();
+    /*************************************************************************/
+    /* Private Member Variables */
+    /*************************************************************************/
+    // Rover object to do basic rover operations in the state machine.
+    Rover* mPhoebe;
 
-	NavState executeDriveToBall();
+    // RoverStatus object for updating the rover's status.
+    Rover::RoverStatus mNewRoverStatus;
 
-	NavState executeTurnAroundObs();
+    // Lcm object for sending and recieving messages.
+    lcm::LCM& mLcmObject;
 
-	NavState executeDriveAroundObs();
+    // Configuration file for the rover.
+    rapidjson::Document mRoverConfig;
 
-	void initializeSearch();
+    // Odometry point used when avoiding obstacles.
+    Odometry mObstacleAvoidancePoint;
 
-	bool addFourPointsToSearch();
+    // Initial angle to go around obstacle upon detection.
+    double mOriginalObstacleAngle;
 
-	Odometry createAvoidancePoint( const double distance );
+    // Number of waypoints in course.
+    unsigned mTotalWaypoints;
 
-	/*************************************************************************/
-	/* Private Member Variables */
-	/*************************************************************************/
-	// Rover object to do basic rover operations in the state machine.
-	Rover* mPhoebe;
+    // Number of waypoints completed.
+    unsigned mCompletedWaypoints;
 
-	// RoverStatus object for updating the rover's status.
-	Rover::RoverStatus mNewRoverStatus;
+    // Number of waypoints missed.
+    unsigned mMissedWaypoints;
 
-	// Lcm object for sending and recieving messages.
-	lcm::LCM& mLcmObject;
+    // Indicates if the state changed on a given iteration of run.
+    bool mStateChanged;
 
-	// Configuration file for the rover.
-	rapidjson::Document mRoverConfig;
-
-	// Queue of search points.
-	queue<Odometry> mSearchPoints;
-
-	// Vector of search point multipliers used as a base for the search
-	// points.
-	vector< pair<short, short> > mSearchPointMultipliers;
-
-	// Odometry point used when avoiding obstacles.
-	Odometry mObstacleAvoidancePoint;
-
-	// Initial angle to go around obstacle upon detection.
-	double mOriginalObstacleAngle;
-
-	// Number of waypoints in course.
-	unsigned mTotalWaypoints;
-
-	// Number of waypoints completed.
-	unsigned mCompletedWaypoints;
-
-	// Number of waypoints missed.
-	unsigned mMissedWaypoints;
-
-	// Indicates if the state changed on a given iteration of run.
-	bool mStateChanged;
+    // Search pointer to control search states
+    Searcher* mSearcher;
 
 }; // StateMachine
 

@@ -1,6 +1,6 @@
 <div id="container">
     <div id="field">
-        <SimulatorField 
+        <SimulatorField
             ref:field
             bind:odom
             bind:waypoints
@@ -14,10 +14,14 @@
 
     <div id="drawmode">
         <DrawModeSelector bind:mode="draw_mode"/>
-        <label>
+        <p><label>
             Field Radius (meters):
             <input type="number" bind:value="radius"/>
-        </label>
+        </label></p>
+        <p>
+            <label>Test Case: </label>
+            <input id="files" name="files[]" type="file"/>
+        </p>
     </div>
 
     <div id="sidebar">
@@ -62,7 +66,7 @@
 
         {{#each waypoints as waypoint, i}}
         <div class="display waypoint_display">
-            <SimulatedItemDisplay 
+            <SimulatedItemDisplay
                            title="Waypoint {{ i }}"
                            item="{{ waypoint }}"
                            rover="{{ odom }}"
@@ -102,6 +106,12 @@
         </div>
         {{/each}}
     </div>
+
+    <script>
+        function uploadFile() {
+            current_test: test
+        }
+    </script>
 </div>
 
 <script>
@@ -115,8 +125,14 @@
     import { to_dms } from '../geography.js';
 
     const NUM_DIGITS = 7;
+    let app;
 
     export default {
+        oncreate() {
+            document.getElementById('files').addEventListener('change', this.handleFileSelect);
+            app = this;
+        },
+
         data () {
             return {
                 draw_mode: WAYPOINT_MODE,
@@ -133,7 +149,11 @@
                 tennis_balls: [],
                 rocks: [],
 
-                radius: 100,
+                radius: 25,
+
+                test: "<name>",
+
+                current_test: "None",
 
                 tennis_ball_state: {
                     found: false,
@@ -149,6 +169,7 @@
                 lcm_connected: false,
 
                 nav_state: 0,
+                search_state: 0,
                 completed_wps: 0,
                 missed_wps: 0,
                 total_wps: 0,
@@ -160,33 +181,50 @@
 
         computed: {
             nav_state_textual: (nav_state) => {
-                // 
                 switch(nav_state) {
-                case 0: return 'OFF';
-                case 1: return 'DONE';
-                case 10: return 'TURN';
-                case 11: return 'DRIVE';
-                case 20: return 'SEARCH_FACE0';
-                case 21: return 'SEARCH_FACE120';
-                case 22: return 'SEARCH_FACE240';
-                case 23: return 'SEARCH_FACE360';
-                case 24: return 'SEARCH_TURN';
-                case 25: return 'SEARCH_DRIVE';
-                case 28: return 'TURN_TO_BALL';
-                case 29: return 'DRIVE_TO_BALL';
-                case 30: return 'TURN_AROUND_OBS';
-                case 31: return 'DRIVE_AROUND_OBS';
-                case 32: return 'SEARCH_TURN_AROUND_OBS';
-                case 33: return 'SEARCH_DRIVE_AROUND_OBS';
-                default: return 'UNKNOWN';
+                    case 0: return 'Off';
+                    case 1: return 'Done';
+                    case 10: return 'Turn';
+                    case 11: return 'Drive';
+                    case 20: return 'Search Face North';
+                    case 21: return 'Search Face 120';
+                    case 22: return 'Search Face 240';
+                    case 23: return 'Search Face 360';
+                    case 24: return 'Search Turn';
+                    case 25: return 'Search Drive';
+                    case 28: return 'Turn To Ball';
+                    case 29: return 'Drive To Ball';
+                    case 30: return 'Turn Around Obstacle';
+                    case 31: return 'Drive Around Obstacle';
+                    case 32: return 'Search Turn Around Obstacle';
+                    case 33: return 'Search Drive Around Obstacle';
+                    case 34: return 'Change Search Type';
+                    default: return 'Unknown';
                 }
             },
-
+            
             latitude_min_display: (odom) => odom.latitude_min.toFixed(NUM_DIGITS),
             longitude_min_display: (odom) => odom.longitude_min.toFixed(NUM_DIGITS),
         },
 
         methods: {
+            handleFileSelect: function(event) {
+                var files = event.target.files;
+                var fname = files[0].name;
+                console.log(fname);
+                var reader = new FileReader();
+                reader.readAsText(files[0]);
+                reader.onload = ((theFile) => {
+                    return (e) => {
+                        var inputData = e.target.result;
+                        console.log(inputData);
+                        var testCaseData = JSON.parse(inputData);
+                        app.set(testCaseData);
+                        console.log(app)
+                    };
+                })(files[0]);
+            },
+
             apply_joystick: function(stick) {
                 this.set({
                     forward_back: stick.forward_back,
@@ -202,6 +240,9 @@
                         is_auton: this.get('enabled')
                     });
                     const odom = this.get("odom");
+                    this.fire("bearing", {
+                        bearing: odom.bearing_deg
+                    });
                     this.fire("odom", {
                         latitude_deg: odom.latitude_deg|0,
                         latitude_min: odom.latitude_min,
@@ -257,7 +298,7 @@
     grid-template-rows: 600px 1fr;
     grid-template-areas: "canvas sidebar"
                          "drawmode sidebar";
-    grid-gap: 5px;                    
+    grid-gap: 5px;
 }
 
 #field {
